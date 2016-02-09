@@ -1,0 +1,21 @@
+{
+  "name": "git-rehash",
+  "version": "0.0.0",
+  "description": "Map git objects between different hash-spaces",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/clehner/git-rehash"
+  },
+  "keywords": [
+    "git"
+  ],
+  "author": "Charles Lehner (http://celehner.com/)",
+  "license": "Fair",
+  "bugs": {
+    "url": "https://github.com/clehner/git-rehash/issues"
+  }
+}
