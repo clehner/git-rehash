@@ -27,12 +27,12 @@
   "68aba62e560c0ebc3396e8ae9335232cd93a3f60": {
     "type": "tree",
     "length": 37,
-    "data": "100644 hello.txt\u0000;\u0018å\u0012Û§L\u0000Ý\b®³r­"
+    "data": "MTAwNjQ0IGhlbGxvLnR4dAA7GOUS26eeTIMA3Qius3+OcouNrQ=="
   },
   "96e10162dd55da56a440c5285ea9e7d4abf55d77": {
     "type": "tree",
     "length": 104,
-    "data": "40000 foo\u0000°\u0003ö\u000f«à-³BÉÿ´Ô5¿ó?S!-100644 hello.txt\u0000;\u0018å\u0012Û§L\u0000Ý\b®³r­100644 thing.txt\u0000²´J9\u0002H¦H%¯ø÷ZWÀ("
+    "data": "NDAwMDAgZm9vALAD9g+r4C2zQsn/tNQ1v/M/UyEtMTAwNjQ0IGhlbGxvLnR4dAA7GOUS26eeTIMA3Qius3+OcouNrTEwMDY0NCB0aGluZy50eHQAsrRKOQJIpoSGSCWv+H+M91pXwCg="
   },
   "9a385c1d6b48b7f472ac507a3ec08263358e9804": {
     "type": "commit",
@@ -42,12 +42,12 @@
   "a1c857fd91baba24b7b222888a69f6c7505b950e": {
     "type": "tree",
     "length": 104,
-    "data": "40000 foo\u0000°\u0003ö\u000f«à-³BÉÿ´Ô5¿ó?S!-100644 hello.txt\u0000;\u0018å\u0012Û§L\u0000Ý\b®³r­100644 thing.txt\u0000\u0017ÕÙíó\u001aÔ\u0010\u0017ËÖÑÐ3\"¸"
+    "data": "NDAwMDAgZm9vALAD9g+r4C2zQsn/tNQ1v/M/UyEtMTAwNjQ0IGhlbGxvLnR4dAA7GOUS26eeTIMA3Qius3+OcouNrTEwMDY0NCB0aGluZy50eHQAF9XZ7fMagIeK1JEQF8vW0dAzIrg="
   },
   "b003f60fabe02db342c9ffb4d435bff33f53212d": {
     "type": "tree",
     "length": 30,
-    "data": "40000 bar\u0000àÎÌúA]´Çîögµì{=¸Ö.%"
+    "data": "NDAwMDAgYmFyAODOzPpBXbTH7vZntZ3sez241i4l"
   },
   "b2b44a390248a684864825aff87f8cf75a57c028": {
     "type": "blob",
@@ -57,6 +57,6 @@
   "e0ceccfa415db4c7eef667b59dec7b3db8d62e25": {
     "type": "tree",
     "length": 33,
-    "data": "100644 stuff\u0000$ÓÒ4\u0016\u0007ÒO¢ºëÅµÃQíº$¥"
+    "data": "MTAwNjQ0IHN0dWZmACTT0jQWiwfST6K668W1w1HtuiSl"
   }
 }

@@ -9,7 +9,7 @@ var objects = Object.keys(repo).map(function (id) {
   return {
     type: obj.type,
     length: obj.length,
-    data: new Buffer(obj.data)
+    data: new Buffer(obj.data, obj.type == 'tree' ? 'base64' : 'utf8')
   }
 })
 
