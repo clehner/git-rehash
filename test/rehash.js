@@ -4,14 +4,12 @@ var repo = require('./repo')
 var pull = require('pull-stream')
 var crypto = require('crypto')
 
-var objects = Object.keys(repo).map(function (id) {
-  var obj = repo[id]
-  return {
-    type: obj.type,
-    length: obj.length,
-    data: new Buffer(obj.data, obj.type == 'tree' ? 'base64' : 'utf8')
-  }
-})
+var objectIds = Object.keys(repo)
+var objects = objectIds.map(function (id) { return repo[id] })
+
+function objectEncoding(obj) {
+  return obj.type == 'tree' ? 'base64' : 'utf8'
+}
 
 function expandObjects() {
   return function (readObject) {
@@ -20,7 +18,7 @@ function expandObjects() {
         cb(end, obj && {
           type: obj.type,
           length: obj.length,
-          read: pull.once(obj.data)
+          read: pull.once(new Buffer(obj.data, objectEncoding(obj)))
         })
       })
     }
@@ -39,7 +37,7 @@ function flattenObjects() {
             cb(null, {
               type: obj.type,
               length: obj.length,
-              data: Buffer.concat(bufs)
+              data: Buffer.concat(bufs).toString(objectEncoding(obj))
             })
           })
         )
@@ -54,9 +52,18 @@ function hash(type, data, encoding) {
 
 function lookup(gitHash, cb) {
   if (gitHash in repo)
-    cb(null, hash('sha256', repo[gitHash].data, 'hex'))
+    cb(null, hash('sha256', repo[gitHash].data))
   else
     cb(new Error('hash not present'))
+}
+
+
+function objectsEquals(t) {
+  var i = 0
+  return function gotObject(obj) {
+    t.deepEquals(obj, objects[i], 'got object ' + objectIds[i])
+    i++
+  }
 }
 
 tape('pass through', function (t) {
@@ -73,15 +80,17 @@ tape('pass through', function (t) {
 })
 
 tape('rewrite object hashes', function (t) {
+  var gotObject = objectsEquals(t)
   pull(
     pull.values(objects),
     expandObjects(),
     rehash.fromGit('sha256', lookup),
-    rehash.toGit('sha256', lookup),
+    rehash.toGit('sha256', 32),
     flattenObjects(),
-    pull.collect(function (err, objs) {
+    pull.drain(function (obj) {
+      gotObject(obj)
+    }, function (err) {
       t.error(err, 'rewrite and flatten objects')
-      t.deepEqual(objs, objects, 'the right objects')
       t.end()
     })
   )
