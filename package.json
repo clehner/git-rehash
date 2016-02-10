@@ -4,7 +4,7 @@
   "description": "Map git objects between different hash-spaces",
   "main": "index.js",
   "scripts": {
-    "test": "node test"
+    "test": "tape test/*.js"
   },
   "repository": {
     "type": "git",
@@ -17,5 +17,9 @@
   "license": "Fair",
   "bugs": {
     "url": "https://github.com/clehner/git-rehash/issues"
+  },
+  "devDependencies": {
+    "tape": "^4.4.0",
+    "pull-stream": "^3.1.0"
   }
 }
