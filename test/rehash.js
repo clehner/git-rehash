@@ -3,7 +3,14 @@ var rehash = require('../')
 var repo = require('./repo')
 var pull = require('pull-stream')
 
-var objectsArray = Object.keys(repo).map(function (id) { return repo[id] })
+var objects = Object.keys(repo).map(function (id) {
+  var obj = repo[id]
+  return {
+    type: obj.type,
+    length: obj.length,
+    data: new Buffer(obj.data)
+  }
+})
 
 function expandObjects() {
   return function (readObject) {
@@ -31,7 +38,7 @@ function flattenObjects() {
             cb(null, {
               type: obj.type,
               length: obj.length,
-              data: bufs.join('')
+              data: Buffer.concat(bufs)
             })
           })
         )
@@ -46,12 +53,12 @@ function lookup() {
 
 tape('pass through', function (t) {
   pull(
-    pull.values(objectsArray),
+    pull.values(objects),
     expandObjects(),
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')
-      t.deepEqual(objs, objectsArray, 'the right objects')
+      t.deepEqual(objs, objects, 'the right objects')
       t.end()
     })
   )
@@ -59,14 +66,14 @@ tape('pass through', function (t) {
 
 tape('rewrite object hashes', function (t) {
   pull(
-    pull.values(objectsArray),
+    pull.values(objects),
     expandObjects(),
     rehash.fromGit('sha256', lookup),
     rehash.toGit('sha256', lookup),
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')
-      t.deepEqual(objs, objectsArray, 'the right objects')
+      t.deepEqual(objs, objects, 'the right objects')
       t.end()
     })
   )
