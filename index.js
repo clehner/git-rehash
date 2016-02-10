@@ -1,24 +1,38 @@
 var crypto = require('crypto')
 var buffered = require('pull-buffered')
+var pull = require('pull-stream')
 
-function createHash(type) {
-  return function hasher(read) {
-    var hash = hasher.hash =
-      (typeof type == 'string') ? crypto.createHash(type) : type
+function createHash(type, onEnd) {
+  function hasher(read) {
     return function (abort, cb) {
       read(abort, function (end, data) {
-        if (end === true) hasher.digest = hash.digest()
+        if (end === true) hasher.digest = hash.digest('hex')
         else if (!end) hash.update(data)
         cb(end, data)
+        if (end && onEnd) onEnd(end === true ? null : end)
       })
     }
   }
+  var hash = hasher.hash =
+    (typeof type == 'string') ? crypto.createHash(type) : type
+  return hasher
 }
 
 function createGitObjectHash(objectType, objectLength) {
   var hasher = createHash('sha1')
   hasher.hash.update(objectType + ' ' + objectLength + '\0')
   return hasher
+}
+
+function passthrough(onEnd) {
+  return function (read) {
+    return function (abort, cb) {
+      read(abort, function (end, data) {
+        if (end && onEnd) onEnd(end)
+        cb(end, data)
+      })
+    }
+  }
 }
 
 function rewriteObjectsFromGit(algorithm, lookup) {
@@ -30,28 +44,43 @@ function rewriteObjectsFromGit(algorithm, lookup) {
       if (ended) return cb(ended)
       readObject(abort, function (end, obj) {
         if (ended = end) return cb(ended)
+        var hasherIn = createGitObjectHash(obj.type, obj.length)
+
         switch (obj.type) {
           case 'blob':
-            // blobs do not need to be rewritten
-            return cb(null, obj)
+            rewrite = passthrough()
+            break
           case 'tag':
-            rewrite = rewriteTagFromGit(cb)
+            rewrite = rewriteTagFromGit()
             break
           case 'tree':
-            rewrite = rewriteTreeFromGit(cb)
+            rewrite = rewriteTreeFromGit()
             break
           case 'commit':
-            rewrite = rewriteCommitFromGit(cb)
+            rewrite = rewriteCommitFromGit(hasherIn)
             break
           default:
             return cb(new Error('Unknown object type ' + obj.type))
         }
 
+        var hasherOut = createHash(algorithm, next)
+
         cb(null, {
           type: obj.type,
           length: obj.length,
-          read: rewrite(obj.read)
+          read: pull(
+            obj.read,
+            hasherIn,
+            rewrite,
+            hasherOut
+          )
         })
+
+        function next(err) {
+          if (err) return cb(err)
+          // console.error('hashed', hasherIn.digest, 'to', hasherOut.digest)
+          hashCache[hasherIn.digest] = hasherOut.digest
+        }
       })
     }
   }
@@ -65,7 +94,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     })
   }
 
-  function rewriteTagFromGit(cb) {
+  function rewriteTagFromGit() {
     return function (read) {
       return function (abort, cb) {
         read(abort, cb)
@@ -73,36 +102,44 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     }
   }
 
-  function rewriteCommitFromGit(cb) {
+  function rewriteCommitFromGit(gitHasher) {
     return function (read) {
-      var b = buffered(read)
-      var readLine = b.lines
-      var inBody = false
+      var ended, lines
       return function (abort, cb) {
-        if (inBody) return b.passthrough(abort, cb)
-        readLine(abort, function (end, line) {
-          if (end) return cb(end)
+        if (ended) return cb(ended)
+        ended = true
 
-          if (line === '') {
-            inBody = true
-            return cb(null, new Buffer('\n'))
+        pull.collect(function (err, bufs) {
+          if (err) return cb(ended = err)
+          lines = Buffer.concat(bufs).toString('utf8').split('\n')
+          lines.unshift('sha1 ' + gitHasher.digest)
+          processLines(1)
+        })(read)
+
+        function processLines(i) {
+          for (; lines[i]; i++) {
+            var args = lines[i].split(' ')
+            if (args[0] === 'tree' || args[0] === 'parent') {
+              if (args[1] in hashCache) {
+                args.push(hashCache[args[1]])
+                lines[i] = args.join(' ')
+              } else {
+                return lookupCached(args[1], function (err, hash) {
+                  args.push(hash)
+                  lines[i] = args.join(' ')
+                  processLines(i+1)
+                })
+              }
+            }
           }
 
-          // put the other hash after the git hash
-          var args = line.split(' ')
-          if (args[0] === 'tree' || args[0] === 'parent')
-            return lookupCached(args[1], function (err, hash) {
-              args[1] += ':' + hash
-              cb(err, new Buffer(args.join(' ') + '\n'))
-            })
-
-          cb(null, new Buffer(line + '\n'))
-        })
+          cb(null, new Buffer(lines.join('\n'), 'utf8'))
+        }
       }
     }
   }
 
-  function rewriteTreeFromGit(cb) {
+  function rewriteTreeFromGit() {
     return function (read) {
       return function (abort, cb) {
         read(abort, cb)
@@ -168,9 +205,14 @@ function rewriteObjectsToGit(algorithm) {
 
           // remove the other hash and leave the git hash
           var args = line.split(' ')
-          if (args[0] === 'tree' || args[0] === 'parent') {
-            args[1] = args[1].split(':')[0]
-            line = args.join(' ')
+          switch (args[0]) {
+            case 'tree':
+            case 'parent':
+              args.pop()
+              line = args.join(' ')
+              break
+            case 'sha1':
+              return cb(null, new Buffer(0))
           }
 
           cb(null, new Buffer(line + '\n'))
