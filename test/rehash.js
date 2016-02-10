@@ -3,14 +3,7 @@ var rehash = require('../')
 var repo = require('./repo')
 var pull = require('pull-stream')
 
-function objects() {
-  var ids = Object.keys(repo)
-  var i = 0
-  return function (abort, cb) {
-    if (i >= ids.length) return cb(true)
-    cb(null, repo[ids[i++]])
-  }
-}
+var objectsArray = Object.keys(repo).map(function (id) { return repo[id] })
 
 function expandObjects() {
   return function (readObject) {
@@ -53,13 +46,27 @@ function lookup() {
 
 tape('pass through', function (t) {
   pull(
-    objects(),
+    pull.values(objectsArray),
     expandObjects(),
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')
-      var objs2 = Object.keys(repo).map(function (id) { return repo[id] })
-      t.deepEqual(objs, objs2, 'the right objects')
+      t.deepEqual(objs, objectsArray, 'the right objects')
+      t.end()
+    })
+  )
+})
+
+tape('rewrite object hashes', function (t) {
+  pull(
+    pull.values(objectsArray),
+    expandObjects(),
+    rehash.fromGit('sha256', lookup),
+    rehash.toGit('sha256', lookup),
+    flattenObjects(),
+    pull.collect(function (err, objs) {
+      t.error(err, 'rewrite and flatten objects')
+      t.deepEqual(objs, objectsArray, 'the right objects')
       t.end()
     })
   )
