@@ -50,14 +50,12 @@ function rewriteObjectsFromGit(algorithm, lookup) {
           case 'blob':
             rewrite = passthrough()
             break
+          case 'commit':
           case 'tag':
-            rewrite = rewriteTagFromGit()
+            rewrite = rewriteCommitOrTagFromGit(hasherIn)
             break
           case 'tree':
             rewrite = rewriteTreeFromGit()
-            break
-          case 'commit':
-            rewrite = rewriteCommitFromGit(hasherIn)
             break
           default:
             return cb(new Error('Unknown object type ' + obj.type))
@@ -94,15 +92,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     })
   }
 
-  function rewriteTagFromGit() {
-    return function (read) {
-      return function (abort, cb) {
-        read(abort, cb)
-      }
-    }
-  }
-
-  function rewriteCommitFromGit(gitHasher) {
+  function rewriteCommitOrTagFromGit(gitHasher) {
     return function (read) {
       var ended, lines
       return function (abort, cb) {
@@ -119,7 +109,10 @@ function rewriteObjectsFromGit(algorithm, lookup) {
         function processLines(i) {
           for (; lines[i]; i++) {
             var args = lines[i].split(' ')
-            if (args[0] === 'tree' || args[0] === 'parent') {
+            switch (args[0]) {
+              case 'tree':
+              case 'parent':
+              case 'object':
               if (args[1] in hashCache) {
                 args.push(hashCache[args[1]].toString('hex'))
                 lines[i] = args.join(' ')
@@ -176,14 +169,12 @@ function rewriteObjectsToGit(algorithm, hashLength) {
         switch (obj.type) {
           case 'blob':
             return cb(null, obj)
+          case 'commit':
           case 'tag':
-            rewrite = rewriteTagToGit(cb)
+            rewrite = rewriteCommitOrTagToGit(cb)
             break
           case 'tree':
             rewrite = rewriteTreeToGit(cb)
-            break
-          case 'commit':
-            rewrite = rewriteCommitToGit(cb)
             break
           default:
             return cb(new Error('Unknown object type ' + obj.type))
@@ -198,15 +189,7 @@ function rewriteObjectsToGit(algorithm, hashLength) {
     }
   }
 
-  function rewriteTagToGit(cb) {
-    return function (read) {
-      return function (abort, cb) {
-        read(abort, cb)
-      }
-    }
-  }
-
-  function rewriteCommitToGit(cb) {
+  function rewriteCommitOrTagToGit(cb) {
     return function (read) {
       var b = buffered(read)
       var readLine = b.lines
@@ -226,6 +209,7 @@ function rewriteObjectsToGit(algorithm, hashLength) {
           switch (args[0]) {
             case 'tree':
             case 'parent':
+            case 'object':
               args.pop()
               line = args.join(' ')
               break

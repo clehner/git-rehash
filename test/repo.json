@@ -29,6 +29,11 @@
     "length": 37,
     "data": "MTAwNjQ0IGhlbGxvLnR4dAA7GOUS26eeTIMA3Qius3+OcouNrQ=="
   },
+  "6a63b117b09c5c82cb1085cbf525da8f94f5bdf8": {
+    "type": "tag",
+    "length": 127,
+    "data": "object 20a13010852a58a413d482dcbd096e4ee24657e5\ntype commit\ntag v1.0.0\ntagger root <root@localhost> 1455125864 -0500\n\ncool tag\n"
+  },
   "96e10162dd55da56a440c5285ea9e7d4abf55d77": {
     "type": "tree",
     "length": 104,

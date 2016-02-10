@@ -61,7 +61,8 @@ function lookup(gitHash, cb) {
 function objectsEquals(t) {
   var i = 0
   return function gotObject(obj) {
-    t.deepEquals(obj, objects[i], 'got object ' + objectIds[i])
+    t.deepEquals(obj, objects[i],
+      'got ' + objects[i].type + ' ' + objectIds[i])
     i++
   }
 }
