@@ -1,4 +1,5 @@
 var crypto = require('crypto')
+var buffered = require('pull-buffered')
 
 function createHash(type) {
   return function hasher(read) {
@@ -21,6 +22,8 @@ function createGitObjectHash(objectType, objectLength) {
 }
 
 function rewriteObjectsFromGit(algorithm, lookup) {
+  var hashCache = {}
+
   return function (readObject) {
     var ended
     return function (abort, cb) {
@@ -53,6 +56,15 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     }
   }
 
+  function lookupCached(gitHash, cb) {
+    if (gitHash in hashCache)
+      return cb(null, hashCache[gitHash])
+    lookup(gitHash, function (err, hash) {
+      hashCache[gitHash] = hash
+      cb(err, hash)
+    })
+  }
+
   function rewriteTagFromGit(cb) {
     return function (read) {
       return function (abort, cb) {
@@ -63,8 +75,29 @@ function rewriteObjectsFromGit(algorithm, lookup) {
 
   function rewriteCommitFromGit(cb) {
     return function (read) {
+      var b = buffered(read)
+      var readLine = b.lines
+      var inBody = false
       return function (abort, cb) {
-        read(abort, cb)
+        if (inBody) return b.passthrough(abort, cb)
+        readLine(abort, function (end, line) {
+          if (end) return cb(end)
+
+          if (line === '') {
+            inBody = true
+            return cb(null, new Buffer('\n'))
+          }
+
+          // put the other hash after the git hash
+          var args = line.split(' ')
+          if (args[0] === 'tree' || args[0] === 'parent')
+            return lookupCached(args[1], function (err, hash) {
+              args[1] += ':' + hash
+              cb(err, new Buffer(args.join(' ') + '\n'))
+            })
+
+          cb(null, new Buffer(line + '\n'))
+        })
       }
     }
   }
@@ -120,8 +153,28 @@ function rewriteObjectsToGit(algorithm) {
 
   function rewriteCommitToGit(cb) {
     return function (read) {
+      var b = buffered(read)
+      var readLine = b.lines
+      var inBody = false
       return function (abort, cb) {
-        read(abort, cb)
+        if (inBody) return b.passthrough(abort, cb)
+        readLine(abort, function (end, line) {
+          if (end) return cb(end)
+
+          if (line === '') {
+            inBody = true
+            return cb(null, new Buffer('\n'))
+          }
+
+          // remove the other hash and leave the git hash
+          var args = line.split(' ')
+          if (args[0] === 'tree' || args[0] === 'parent') {
+            args[1] = args[1].split(':')[0]
+            line = args.join(' ')
+          }
+
+          cb(null, new Buffer(line + '\n'))
+        })
       }
     }
   }

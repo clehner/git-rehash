@@ -2,6 +2,7 @@ var tape = require('tape')
 var rehash = require('../')
 var repo = require('./repo')
 var pull = require('pull-stream')
+var crypto = require('crypto')
 
 var objects = Object.keys(repo).map(function (id) {
   var obj = repo[id]
@@ -47,8 +48,15 @@ function flattenObjects() {
   }
 }
 
-function lookup() {
-  throw new Error('not impl')
+function hash(type, data, encoding) {
+  return crypto.createHash(type).update(data).digest(encoding)
+}
+
+function lookup(gitHash, cb) {
+  if (gitHash in repo)
+    cb(null, hash('sha256', repo[gitHash].data, 'hex'))
+  else
+    cb(new Error('hash not present'))
 }
 
 tape('pass through', function (t) {
