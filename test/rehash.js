@@ -8,7 +8,7 @@ var objectIds = Object.keys(repo)
 var objects = objectIds.map(function (id) { return repo[id] })
 
 function objectEncoding(obj) {
-  return obj.type == 'tree' ? 'base64' : 'utf8'
+  return obj.type == 'tree' ? 'hex' : 'utf8'
 }
 
 function expandObjects() {
