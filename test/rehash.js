@@ -99,10 +99,10 @@ tape('rewrite object hashes', function (t) {
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')
+      console.error(objs)
       // sortObjects(objects).forEach(gotObject)
       t.equals(objs.length, objects.length)
       // t.deepEquals(sortObjects(objs), )
-      // console.error(objs)
       t.end()
     })
   )

@@ -19,6 +19,7 @@
     "url": "https://github.com/clehner/git-rehash/issues"
   },
   "dependencies": {
+    "multicb": "^1.2.1",
     "pull-buffered": "^0.3.0",
     "pull-cat": "^1.1.8",
     "pull-pushable": "^2.0.0",
