@@ -110,8 +110,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
   function gotHashed(err, gitDigest, outDigest, type) {
     if (err) throw new Error(err)
     var gitHash = gitDigest.toString('hex')
-    var outHash = outDigest.toString('hex')
-    hashCache[gitHash] = outHash
+    hashCache[gitHash] = outDigest
 
     // try resolving what be resolved
     var rdeps = depends[gitHash]
@@ -205,7 +204,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
       // rewrite the links
       for (var sha1 in links) {
         var lineNums = links[sha1]
-        var hash = hashCache[sha1]
+        var hash = hashCache[sha1].toString('hex')
         for (var i = 0; i < lineNums; i++)
           lines[lineNums[i]] += ' ' + hash
       }
@@ -263,6 +262,8 @@ function rewriteObjectsFromGit(algorithm, lookup) {
       // re-find and rewrite the links
       for (var i = 0, j; i < buf.length; i = j + 20) {
         j = buf.indexOf(0, i, 'ascii') + 1;
+        if (j === 0)
+          return out.end(new Error('bad data in tree'))
         var sha1 = buf.slice(j, j + 20).toString('hex')
         var hash = hashCache[sha1]
         if (!hash)
