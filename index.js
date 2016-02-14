@@ -30,9 +30,7 @@ function createGitHash(objectType, objectLength, onEnd) {
 function rewriteObjectsFromGit(algorithm, lookup) {
   var hashCache = {/* sha1: other_hash */}
   var depends = {/* dest_sha1: {src_sha1: tryResolve} */}
-  var outQueue = pushable(function (err) {
-    console.error('out queue done', err)
-  })
+  var outQueue = pushable()
   var waiting = 0
 
   return function (readObject) {
@@ -46,10 +44,8 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     function readOut(abort, cb) {
       if (ended) return cb(ended)
       readObject(abort, function next(end, obj) {
-        if (end === true) {
-          console.error('done reading')
+        if (end === true)
           resolveAll()
-        }
         if (ended = end) return cb(ended)
         var hashed = multicb({pluck: 1, spread: true})
         var gitHasher = createGitHash(obj.type, obj.length, hashed())
@@ -57,8 +53,6 @@ function rewriteObjectsFromGit(algorithm, lookup) {
         hashed()(null, obj.type)
         hashed(gotHashed)
         var rewrite
-
-        // console.error('object', obj.type)
 
         switch (obj.type) {
           // Pass through blobs
@@ -107,7 +101,6 @@ function rewriteObjectsFromGit(algorithm, lookup) {
               length: obj.length,
               read: pull.values(bufs)
             })
-            // console.error('waiting', waiting)
           })
         )
       })
@@ -115,11 +108,9 @@ function rewriteObjectsFromGit(algorithm, lookup) {
   }
 
   function gotHashed(err, gitDigest, outDigest, type) {
-    // console.error('hashed', arguments.length, [].slice.call(arguments))
     if (err) throw new Error(err)
     var gitHash = gitDigest.toString('hex')
     var outHash = outDigest.toString('hex')
-    console.error('rewrote', type, gitHash, outHash)
     hashCache[gitHash] = outHash
 
     // try resolving what be resolved
@@ -129,9 +120,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
       tryResolve()
     }
     delete depends[gitHash]
-    console.error('waiting--:', waiting-1, gitHash)
     if (!--waiting)
-      console.error('end'),
       outQueue.end(true)
   }
 
@@ -144,13 +133,10 @@ function rewriteObjectsFromGit(algorithm, lookup) {
 
   function resolveAll(err) {
     if (err) throw err
-    console.error('resolving all')
     waiting++
     for (var hash in depends) {
-      // console.error('hash', hash)
       var rdeps = depends[hash]
       for (var rdep in rdeps) {
-        // console.error('rdep', rdep, 'for', hash, hashCache[rdep], hashCache[hash])
         var tryResolve = rdeps[rdep]
         if (hash in hashCache) {
           tryResolve()
@@ -165,10 +151,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     }
 
     if (!--waiting)
-      console.error('end'),
       outQueue.end(true)
-
-    console.error('resolve done', waiting)
   }
 
   function rewriteCommitOrTagFromGit(type, length, gitHasher, onIndexed) {
@@ -185,7 +168,6 @@ function rewriteObjectsFromGit(algorithm, lookup) {
           lines = Buffer.concat(bufs).toString('utf8').split('\n')
           lines.unshift('sha1 ' + gitHash)
           links = indexLines()
-          // console.error('indexed', type)
           onIndexed()
         })
       )
@@ -217,9 +199,8 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     }
 
     function tryResolve() {
-      if (!canResolve(links) || ended || resolving) return false
+      if (!canResolve(links) || ended || resolving) return
       waiting++
-      // console.error('waiting++:', waiting, gitHash)
       resolving = true
       // rewrite the links
       for (var sha1 in links) {
@@ -228,14 +209,9 @@ function rewriteObjectsFromGit(algorithm, lookup) {
         for (var i = 0; i < lineNums; i++)
           lines[lineNums[i]] += ' ' + hash
       }
-      // console.error('resolved', type, gitHash)
       out.push(new Buffer(lines.join('\n'), 'utf8'))
       out.end(true)
-      // console.error('deleting dep', obj.type, !!depends[sha1][gitHash])
-      // delete depends[sha1][gitHash]
-      return true
     }
-
   }
 
   // Trees, commits and tags are buffered completely because they may refer to
@@ -257,7 +233,6 @@ function rewriteObjectsFromGit(algorithm, lookup) {
           // TODO: do this incrementally
           buf = Buffer.concat(bufs)
           links = indexLinks()
-          // console.error('indexed.', type)
           onIndexed()
         })
       )
@@ -280,14 +255,10 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     }
 
     function tryResolve() {
-      // console.error('try resolve', canResolve(links))
-      if (!canResolve(links) || resolving) return false
+      if (!canResolve(links) || resolving) return
       var offset = 0
       resolving = true
       waiting++
-      // console.error('waiting++:', waiting, gitHash)
-
-      // console.error('resolving tree', gitHash)
 
       // re-find and rewrite the links
       for (var i = 0, j; i < buf.length; i = j + 20) {
@@ -300,12 +271,8 @@ function rewriteObjectsFromGit(algorithm, lookup) {
         out.push(buf.slice(i, j + 20))
         // append other hash
         out.push(new Buffer(hash))
-        // remove used dependency link
-        // console.error('deleting dep', !!depends[sha1][gitHash])
-        // delete depends[sha1][gitHash]
       }
       out.end(true)
-      return true
     }
   }
 }
