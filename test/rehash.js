@@ -108,7 +108,7 @@ tape('rewrite object hashes', function (t) {
     pull.values(objects),
     expandObjects(),
     rehash.fromGit('sha256', lookup),
-    rehash.toGit('sha256', 32),
+    rehash.toGit('sha256'),
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')

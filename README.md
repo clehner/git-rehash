@@ -42,14 +42,13 @@ Create a through stream for git objects that rewrites their hashes to use
   given the objects's git hash. This is needed for rewriting links to objects
   that are not present in the stream that `rehash` is processing.
 
-#### `rehash.toGit(algorithm, hashLength)`
+#### `rehash.toGit(algorithm)`
 
 Create a through stream for git objects that rewrites their hashes from
 `algorithm` back to git's native hashing algorithm.
 
 - `algorithm`: a string that may be passed to `crypto.createHash`,
   e.g. `"sha256"`
-- `hashLength`: the length in bytes of each `algorithm`-hash
 
 A lookup function is not needed here because the original git hash of each
 object is included in the rewritten object.

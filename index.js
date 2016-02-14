@@ -271,14 +271,14 @@ function rewriteObjectsFromGit(algorithm, lookup) {
         // pass through file info, null byte, and git hash
         out.push(buf.slice(i, j + 20))
         // append other hash
-        out.push(new Buffer(hash))
+        out.push(new Buffer(hash + '\0'))
       }
       out.end(true)
     }
   }
 }
 
-function rewriteObjectsToGit(algorithm, hashLength) {
+function rewriteObjectsToGit(algorithm) {
   return function (readObject) {
     var ended
     return function (abort, cb) {
@@ -345,19 +345,23 @@ function rewriteObjectsToGit(algorithm, hashLength) {
   function rewriteTreeToGit(cb) {
     return function (read) {
       var b = buffered(read)
-      var readFileInfo = b.delimited(0)
-      var readHashes = b.chunks(20 + hashLength)
+      var readFileInfo = readOtherHash = b.delimited(0)
+      var readGitHash = b.chunks(20)
 
       return function readEntry(abort, cb) {
         readFileInfo(abort, function (end, fileInfo) {
           if (end) return cb(end)
-          readHashes(abort, function (end, hashes) {
+          readGitHash(abort, function (end, gitHash) {
             if (end) return cb(end)
-            cb(null, Buffer.concat([
-              new Buffer(fileInfo),
-              new Buffer([0]),
-              hashes.slice(0, 20) // keep only the git hash
-            ]))
+            readOtherHash(abort, function (end, otherHash) {
+              if (end) return cb(end)
+              void otherHash // keep only the git hash
+              cb(null, Buffer.concat([
+                new Buffer(fileInfo),
+                new Buffer([0]),
+                gitHash
+              ]))
+            })
           })
         })
       }
