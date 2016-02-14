@@ -278,7 +278,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
   }
 }
 
-function rewriteObjectsToGit(algorithm) {
+function rewriteObjectsToGit() {
   return function (readObject) {
     var ended
     return function (abort, cb) {

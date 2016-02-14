@@ -111,7 +111,7 @@ tape('rewrite object hashes', function (t) {
       t.fail('lookup should not be needed when all objects are in the stream')
       lookup(gitHash, cb)
     }),
-    rehash.toGit('sha256'),
+    rehash.toGit(),
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')
