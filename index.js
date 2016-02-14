@@ -109,9 +109,11 @@ function rewriteObjectsFromGit(algorithm, lookup) {
 
   function gotHashed(err, gitDigest, outDigest, type) {
     if (err) throw new Error(err)
-    var gitHash = gitDigest.toString('hex')
-    hashCache[gitHash] = outDigest
+    useHash(gitDigest.toString('hex'), outDigest.toString('hex'))
+  }
 
+  function useHash(gitHash, outHash) {
+    hashCache[gitHash] = outHash
     // try resolving what be resolved
     var rdeps = depends[gitHash]
     for (var hash in rdeps) {
@@ -120,7 +122,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
     }
     delete depends[gitHash]
     if (!--waiting)
-      outQueue.end(true)
+      checkpoint()
   }
 
   function canResolve(links) {
@@ -143,14 +145,54 @@ function rewriteObjectsFromGit(algorithm, lookup) {
       }
     }
 
-    // check for unresolved links
-    var thingsRemaining = false
-    if (thingsRemaining) {
-      // TODO
+    if (!--waiting)
+      checkpoint()
+  }
+
+  function checkpoint() {
+    var sha1
+    // remove old depends info and see what is still needed
+    var allEmpty = true
+    for (sha1 in depends) {
+      var rdeps = depends[sha1]
+      var empty = true
+      for (var rdep in rdeps) {
+        if (rdep in hashCache)
+          delete rdeps[rdep]
+        else
+          empty = false
+      }
+      if (empty)
+        delete depends[sha1]
+      else
+        allEmpty = false
     }
 
-    if (!--waiting)
+    if (allEmpty) {
+      // everything was resolved. stream out is done
       outQueue.end(true)
+    } else {
+      // ask for something since it doesn't seem to be in the stream
+      sha1 = findRoot()
+      waiting++
+      lookup(sha1, function (err, hash) {
+        if (err) return outQueue.end(err)
+        // continue resolving dependencies using info from the lookup
+        useHash(sha1, hash)
+      })
+    }
+  }
+
+  function findRoot() {
+    // find something that is depended on but does not depend on other things.
+    // i.e. an object we need but have not seen
+    var rdeps = {}
+    for (var sha1 in depends)
+      for (var rdep in depends[sha1])
+        rdeps[rdep] = true
+    for (sha1 in depends)
+      if (!(sha1 in rdeps))
+        return sha1
   }
 
   function rewriteCommitOrTagFromGit(type, length, gitHasher, onIndexed) {
@@ -204,7 +246,7 @@ function rewriteObjectsFromGit(algorithm, lookup) {
       // rewrite the links
       for (var sha1 in links) {
         var lineNums = links[sha1]
-        var hash = hashCache[sha1].toString('hex')
+        var hash = hashCache[sha1]
         for (var i = 0; i < lineNums; i++)
           lines[lineNums[i]] += ' ' + hash
       }

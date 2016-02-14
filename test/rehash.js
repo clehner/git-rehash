@@ -73,9 +73,8 @@ function gitHash(obj, data) {
 }
 
 function lookup(gitHash, cb) {
-  console.error('lookup', gitHash)
   if (gitHash in repo)
-    cb(null, hash('sha256', repo[gitHash].data))
+    cb(null, hash('sha256', repo[gitHash].data, 'hex'))
   else
     cb(new Error('hash not present: ' + gitHash))
 }
@@ -84,7 +83,11 @@ function lookup(gitHash, cb) {
 function objectsEquals(t, objs) {
   var i = 0
   return function gotObject(obj) {
-    t.deepEquals(obj, objs[i], 'got ' + objs[i].type)
+    var expected = objs[i]
+    if (i >= objs.length)
+      t.notOk(obj, 'too many objects')
+    else
+      t.deepEquals(obj, expected, 'got ' + expected.type + ' ' + expected.sha1)
     i++
   }
 }
@@ -117,6 +120,32 @@ tape('rewrite object hashes', function (t) {
       t.error(err, 'rewrite and flatten objects')
       t.equals(objs.length, objects.length, 'got the right number of objects')
       sortObjects(objs).forEach(gotObject)
+      t.end()
+    })
+  )
+})
+
+tape('rewrite object hashes with missing dependency', function (t) {
+  // remove the initial commit
+  var removeId = '9a385c1d6b48b7f472ac507a3ec08263358e9804'
+  var objects2 = objects.filter(function (obj) {
+    return obj.sha1 != removeId
+  })
+
+  var gotObject = objectsEquals(t, sortObjects(objects2))
+  pull(
+    pull.values(objects2),
+    expandObjects(),
+    rehash.fromGit('sha256', function (gitHash, cb) {
+      t.equals(gitHash, removeId, 'lookup called for missing object')
+      lookup(gitHash, cb)
+    }),
+    rehash.toGit(),
+    flattenObjects(),
+    pull.collect(function (err, objs) {
+      t.error(err, 'rewrite and flatten objects')
+      sortObjects(objs).forEach(gotObject)
+      t.equals(objs.length, objects2.length, 'got the right number of objects')
       t.end()
     })
   )
