@@ -7,17 +7,12 @@ git objects are identified by a SHA1 hash of their type, length, and content
 git objects in other content-addressable file systems and sync them with git's
 object storage.
 
-This module rewrites git objects (except blobs) to allow for moving them
-between hash spaces while preserving hash links.
+This module rewrites git objects to preserve links between them while moving
+the objects into a different hash space. Blobs (git objects that store file
+data) are passed through without rewriting, so they will hash the same as if
+you hash the original files in the repo.
 
 [masak]: https://gist.github.com/masak/2415865
-
-## Example
-
-```js
-var rehash = require('git-rehash')
-
-```
 
 ## API
 
@@ -50,4 +45,10 @@ transformation applied by `rehash.fromGit`
 
 ## License
 
-Fair
+Copyright (c) 2016 Charles Lehner
+
+Usage of the works is permitted provided that this instrument is
+retained with the works, so that any entity that uses the works is
+notified of this instrument.
+
+DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
