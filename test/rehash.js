@@ -5,10 +5,15 @@ var pull = require('pull-stream')
 var crypto = require('crypto')
 
 var objectIds = Object.keys(repo)
-var objects = objectIds.map(function (id) { return repo[id] })
+var objects = objectIds.map(function (id) {
+  obj = repo[id]
+  obj.sha1 = id
+  return obj
+})
 
 function compareObjects(a, b) {
-  return a.data > b.data
+  return (a.length - b.length)
+    || (a.data > b.data ? 1 : a.data < b.data ? -1 : 0)
 }
 
 function sortObjects(objs) {
@@ -42,10 +47,12 @@ function flattenObjects() {
           obj.read,
           pull.collect(function (err, bufs) {
             if (err) return cb(err)
+            var buf = Buffer.concat(bufs)
             cb(null, {
               type: obj.type,
               length: obj.length,
-              data: Buffer.concat(bufs).toString(objectEncoding(obj))
+              data: buf.toString(objectEncoding(obj)),
+              sha1: gitHash(obj, buf)
             })
           })
         )
@@ -58,6 +65,13 @@ function hash(type, data, encoding) {
   return crypto.createHash(type).update(data).digest(encoding)
 }
 
+function gitHash(obj, data) {
+  var hasher = crypto.createHash('sha1')
+  hasher.update(obj.type + ' ' + obj.length + '\0')
+  hasher.update(data)
+  return hasher.digest('hex')
+}
+
 function lookup(gitHash, cb) {
   console.error('lookup', gitHash)
   if (gitHash in repo)
@@ -68,10 +82,9 @@ function lookup(gitHash, cb) {
 
 
 function objectsEquals(t, objs) {
-  objs = objs || objects
   var i = 0
   return function gotObject(obj) {
-    t.deepEquals(obj, objs[i], 'got ' + objs[i].type) // + ' ' + objectIds[i])
+    t.deepEquals(obj, objs[i], 'got ' + objs[i].type)
     i++
   }
 }
@@ -99,10 +112,8 @@ tape('rewrite object hashes', function (t) {
     flattenObjects(),
     pull.collect(function (err, objs) {
       t.error(err, 'rewrite and flatten objects')
-      console.error(objs)
-      // sortObjects(objects).forEach(gotObject)
-      t.equals(objs.length, objects.length)
-      // t.deepEquals(sortObjects(objs), )
+      t.equals(objs.length, objects.length, 'got the right number of objects')
+      sortObjects(objs).forEach(gotObject)
       t.end()
     })
   )
